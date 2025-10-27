@@ -6,11 +6,7 @@ Overview
 - Compute average buy-in, realized and unrealized PnL (FIFO)
 - Simple dashboard with holdings and summary
 
-Google
-{"web":{"client_id":"1028975072181-hlau8ncbimg61jflnriqlur1kc274e1f.apps.googleusercontent.com","project_id":"portfoliotracker-476122","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"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","javascript_origins":["http://localhost","https://arthurstruik.com","https://arthurstruik.nl","http://localhost:3000"]}}
 
-client id: 1028975072181-hlau8ncbimg61jflnriqlur1kc274e1f.apps.googleusercontent.com
-client secret: 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
 
 Setup
 1) Copy `.env.example` to `.env` and fill in values:
