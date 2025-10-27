@@ -1,0 +1,322 @@
+import { signIn, signOut, useSession } from "next-auth/react";
+import useSWR from "swr";
+import { useMemo, useState } from "react";
+import { computePortfolio, type Tx } from "@/lib/pnl";
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+export default function Home() {
+    const { data: session } = useSession();
+    if (!session) {
+        return (<div className="container">
+            <h1>Crypto Portfolio Tracker</h1>
+            <p>Sign in with Google to get started.</p>
+            <button className="btn" onClick={() => signIn("google")}>Sign in with Google</button>      </div>);
+    } return <Dashboard />;
+}
+
+function Dashboard() {
+    const { data: session } = useSession();
+    const { data: txs, mutate } = useSWR(session ? "/api/transactions" : null, fetcher);
+    const { data: conn, mutate: mutateConn } = useSWR(session ? "/api/connections/bitvavo" : null, fetcher);
+    const [bv, setBv] = useState<{ balances: Array<{ symbol: string; available: string; inOrder: string }> } | null>(null);
+    const [vals, setVals] = useState<{
+        valuations: Array<{ symbol: string; available: number; inOrder: number; priceEUR: number; change24h: number; change24hPct: number; valueInOrderEUR: number; valueTotalEUR: number }>;
+        totals: { valueAvailableEUR: number; valueInOrderEUR: number; valueTotalEUR: number }; timeframe?: string
+    } | null>(null);
+
+    const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | 'YTD' | '1Y' | 'Max'>('1D');
+    const [form, setForm] = useState({ assetSymbol: "BTC", type: "BUY", quantity: "0.001", pricePerUnit: "60000", fee: "0", timestamp: new Date().toISOString().slice(0, 16), note: "", });
+
+    const portfolio = useMemo(() => {
+        const txList: Tx[] = (txs ?? []).map((t: any) => ({ assetSymbol: t.assetSymbol, type: t.type, quantity: Number(t.quantity), pricePerUnit: Number(t.pricePerUnit), fee: Number(t.fee ?? 0), timestamp: t.timestamp, }));
+        const symbols = Array.from(new Set(txList.map((t) => t.assetSymbol)));
+        const defaults = { BTC: 60000, ETH: 3000, SOL: 150 } as Record<string, number>;
+        const priceMap: Record<string, number> = symbols.reduce((acc, s) => { acc[s] = (defaults as any)[s] ?? 0; return acc; }, {} as Record<string, number>);
+        return computePortfolio(txList, priceMap);
+    }, [txs]);
+
+    async function addTx(e: React.FormEvent) {
+        e.preventDefault();
+        const payload = { assetSymbol: form.assetSymbol.toUpperCase(), type: form.type, quantity: Number(form.quantity), pricePerUnit: Number(form.pricePerUnit), fee: Number(form.fee || 0), timestamp: new Date(form.timestamp), note: form.note || undefined, };
+        const res = await fetch("/api/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), }); if (res.ok) mutate();
+    }
+
+    async function saveBitvavo(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const payload = { apiKey: String(fd.get("apiKey") || ""), apiSecret: String(fd.get("apiSecret") || ""), label: String(fd.get("label") || "") || undefined, };
+        const res = await fetch("/api/connections/bitvavo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (res.ok) mutateConn();
+    }
+
+    async function syncBitvavo() {
+        const res = await fetch("/api/bitvavo/balances"); const data = await res.json(); if (res.ok) setBv(data);
+    }
+
+    async function syncBitvavoWithPrices(tf = timeframe) {
+        const res = await fetch(`/api/bitvavo/valuations?timeframe=${encodeURIComponent(tf.toLowerCase())}`);
+        const data = await res.json(); if (res.ok) setVals(data);
+    }
+
+    return (
+        <div className="container">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+                <h1>Dashboard</h1>
+                <div className="row">
+                    <span>{(useSession().data?.user?.email) ?? ""}</span>
+                    <button className="btn secondary" onClick={() => signOut()}>Sign out</button>
+                </div>
+            </div>
+            <div className="card">
+                <h3>Portfolio Summary</h3>
+                <div className="row" style={{ gap: 24 }}>
+                    <div><strong>Value</strong>
+                        <div>${portfolio.totals.marketValue.toLocaleString()}</div></div>
+                    <div><strong>Cost</strong>
+                        <div>
+                            ${portfolio.totals.totalCostBasis.toLocaleString()}
+                        </div>
+                    </div>
+                    <div><strong>Unrealized PnL</strong>
+                        <div>
+                            ${portfolio.totals.unrealizedPnL.toLocaleString()}
+                        </div>
+                    </div>
+                    <div>
+                        <strong>Realized PnL</strong>
+                        <div>
+                            ${portfolio.totals.realizedPnL.toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="card">
+                <h3>Bitvavo Connection</h3>
+                {
+                    conn?.connected ? (<div className="row" style={{ justifyContent: "space-between" }}>
+                        <div>
+                            <div>Connected to Bitvavo{conn?.connection?.label ? ` (${conn.connection.label})` : ""}</div>
+                        </div>
+                        <div className="row">
+                            <select value={timeframe} onChange={(e) => { const tf = e.target.value as '1D' | '1W' | '1M' | 'YTD' | '1Y' | 'Max'; setTimeframe(tf); }}>
+                                <option value="1D">1D</option>
+                                <option value="1W">1W</option>
+                                <option value="1M">1M</option>
+                                <option value="YTD">YTD</option>
+                                <option value="1Y">1Y</option>
+                                <option value="Max">Max</option>
+                            </select>
+                            <button className="btn secondary" onClick={syncBitvavo}>                Sync Balances
+                            </button>
+                            <button className="btn" onClick={() => syncBitvavoWithPrices(timeframe)}>                Sync Balances + Prices (EUR)
+                            </button>
+                        </div>
+                    </div>) : (<form className="row" onSubmit={saveBitvavo}>
+                        <input name="label" placeholder="Label (optional)" />
+                        <input name="apiKey" placeholder="API Key" required />
+                        <input name="apiSecret" placeholder="API Secret" required />
+                        <button className="btn" type="submit">Connect</button>
+                    </form>)
+                }
+
+                {vals?.valuations?.length ? (<div style={{ marginTop: 12 }}>
+                    <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 18 }}>Total (EUR): €{vals.totals.valueTotalEUR.toLocaleString()}</div>
+                        <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>In Orders: €{(vals.totals.valueInOrderEUR ?? 0).toLocaleString()}</div>
+                    </div>
+                    <table className="pretty" style={{ display: 'none' }}>
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Available</th>
+                                <th>In Order</th>
+                                <th>Price (EUR)</th>
+                                <th>24h Delta</th>
+                                <th>24h</th>
+                                <th>Value Avail (EUR)</th>
+                                <th>Value Total (EUR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {vals.valuations.map((v) => (<tr key={v.symbol}>
+                                <td>{v.symbol}</td>
+                                <td>{v.available}</td>
+                                <td>{v.inOrder}</td>
+                                <td>€{v.priceEUR}</td>
+                                <td style={{ color: v.change24h >= 0 ? '#059669' : '#dc2626' }}>{v.change24h >= 0 ? '+' : ''}{v.change24h}</td>
+
+                                <td style={{ color: v.change24hPct >= 0 ? '#059669' : '#dc2626' }}>{v.change24hPct >= 0 ? '+' : ''}{v.change24hPct}%</td>
+                                <td>€{(v.valueTotalEUR - v.valueInOrderEUR).toLocaleString()}</td>
+                                <td>€{v.valueTotalEUR.toLocaleString()}</td>
+                            </tr>))}
+                        </tbody>
+                    </table>
+                    <div className="cards">
+                        {vals.valuations.map((v) => (
+                            <div className="card-row" key={v.symbol}>
+                                <div className="left">
+                                    <div className="sym">{v.symbol} <span className="sub">x{v.available + v.inOrder}</span></div>
+                                    <div className="sub">In Orders: {v.inOrder}</div>
+                                </div>
+                                <div className="right">
+                                    <div className="cell">
+                                        <div className="label">Price</div>
+                                        <div className="value">€{v.priceEUR}</div>
+                                    </div>
+                                    <div className="cell" style={{minWidth: 200}}>
+                                        <div className="label" style={{paddingRight: 8}}>24h</div>
+                                        <div className="value">
+                                            {/* <td style={{ color: v.change24h >= 0 ? '#059669' : '#dc2626' }}>{v.change24h >= 0 ? '+' : ''}{v.change24h}</td>
+
+                                            <td style={{ color: v.change24hPct >= 0 ? '#059669' : '#dc2626' }}>{v.change24hPct >= 0 ? '+' : ''}{v.change24hPct}%</td> */}
+                                            <span className="badge" style={{ color: v.change24h >= 0 ? '#059669' : '#dc2626' }}>{v.change24h >= 0 ? '+' : ''}{v.change24h}</span>
+                                            <span className="badge" style={{ marginLeft: 8, color: v.change24hPct >= 0 ? '#059669' : '#dc2626' }}>{v.change24hPct >= 0 ? '+' : ''}{v.change24hPct}%</span>
+                                        </div>
+                                    </div>
+                                    <div className="cell">
+                                        <div className="sub">In Orders: €{v.valueInOrderEUR.toLocaleString()}</div>
+                                        <div className="value" style={{ fontSize: 18, fontWeight: 700 }}>€{v.valueTotalEUR.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {false && vals?.valuations.map((v) => (<div className="card-row" key={v.symbol}>
+                            <div style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                                    <div className="left">
+                                        <div className="sym">{v.symbol}</div>
+                                        <div className="sub">Avail {v.available} € In order {v.inOrder}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div className="value" style={{ fontSize: 18, fontWeight: 700 }}>€{v.valueTotalEUR.toLocaleString()}</div>
+                                        <div className="sub">In Orders: €{v.valueInOrderEUR.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <div className="right">
+                                    <div className="cell">
+                                        <div className="label">Price</div>
+                                        <div className="value">€{v.priceEUR}</div>
+                                    </div>
+                                    <div className="cell">
+                                        <div className="label">24h</div>
+                                        <div className="value">
+                                            <span className="badge">{v.change24h >= 0 ? '+' : ''}{v.change24h}</span>
+                                            <span className="badge" style={{ marginLeft: 8 }}>{v.change24hPct >= 0 ? '+' : ''}{v.change24hPct}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>))}
+                    </div>
+                    {/* <div className="sub">In Orders: {vals.totals.valueInOrderEUR?.toLocaleString()}</div> */}
+                </div>) : null}
+                {!vals?.valuations?.length && bv?.balances?.length ?
+                    (
+                        <div style={{ marginTop: 12 }}>
+                            <table className="pretty">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Available</th>
+                                        <th>In Order</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {bv.balances.filter(b => (+b.available || +b.inOrder)).map((b) => (<tr key={b.symbol}>
+                                        <td>{b.symbol}</td>
+                                        <td>{b.available}</td>
+                                        <td>{b.inOrder}</td>
+                                    </tr>))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : null
+                }
+            </div>
+            <div className="card">
+                <h3>Holdings</h3>
+                <table className="pretty" style={{ display: 'none' }}>
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Qty</th>
+                            <th>Avg Cost</th>
+                            <th>Price</th>
+                            <th>Value</th>
+                            <th>Unrealized</th>
+                            <th>Unrealized %</th>
+                            <th>Realized PnL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {portfolio.assets.map((a) => (<tr key={a.symbol}>
+                            <td>{a.symbol}</td>
+                            <td>{a.quantityHeld}</td>
+                            <td>${a.avgCostBasisPerUnit}</td>
+                            <td>${a.marketPrice}</td>
+                            <td>${a.marketValue.toLocaleString()}</td>
+                            <td>${a.unrealizedPnL.toLocaleString()}</td>
+                            <td>{a.unrealizedPnLPercent}%</td>
+                            <td>${a.realizedPnL.toLocaleString()}</td>
+                        </tr>))}
+                    </tbody>
+                </table>
+                <div className="cards">
+                    {portfolio.assets.map((a) => (<div className="card-row" key={a.symbol}>
+                        <div className="left">
+                            <div className="sym">{a.symbol}</div>
+                            <div className="sub">Qty {a.quantityHeld}</div>
+                        </div>
+                        <div className="right">
+                            <div className="cell">
+                                <div className="label">Avg Cost</div>
+                                <div className="value">${a.avgCostBasisPerUnit}</div>
+                            </div>
+                            <div className="cell">
+                                <div className="label">Price</div>
+                                <div className="value">${a.marketPrice}</div>
+                            </div>
+                            <div className="cell">
+                                <div className="label">Value</div>
+                                <div className="value">${a.marketValue.toLocaleString()}</div>
+                            </div>
+                            <div className="cell">
+                                <div className="label">Unrealized</div>
+                                <div className="value" style={{ color: a.unrealizedPnL >= 0 ? '#059669' : '#dc2626' }}>
+                                    {a.unrealizedPnL >= 0 ? '+' : ''}${a.unrealizedPnL.toLocaleString()} ({a.unrealizedPnLPercent}%)
+                                </div>
+                            </div>
+                            <div className="cell">
+                                <div className="label">Realized</div>
+                                <div className="value" style={{ color: a.realizedPnL >= 0 ? '#059669' : '#dc2626' }}>
+                                    {a.realizedPnL >= 0 ? '+' : ''}${a.realizedPnL.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>))}
+
+                </div>
+            </div>
+            <div className="card">
+                <h3>Add Transaction</h3>
+                <form className="row" onSubmit={addTx}>
+                    <input placeholder="Symbol" value={form.assetSymbol} onChange={(e) => setForm({ ...form, assetSymbol: e.target.value })} />
+                    <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                        <option>BUY</option>
+                        <option>SELL</option>
+                        <option>TRANSFER_IN</option>
+                        <option>TRANSFER_OUT</option>
+                    </select>
+                    <input type="number" step="0.00000001" placeholder="Qty" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
+                    <input type="number" step="0.01" placeholder="Price" value={form.pricePerUnit} onChange={(e) => setForm({ ...form, pricePerUnit: e.target.value })} />
+                    <input type="number" step="0.01" placeholder="Fee" value={form.fee} onChange={(e) => setForm({ ...form, fee: e.target.value })} />
+                    <input type="datetime-local" value={form.timestamp} onChange={(e) => setForm({ ...form, timestamp: e.target.value })} />
+                    <input placeholder="Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                    <button className="btn" type="submit">Add</button>
+                </form>
+            </div>
+        </div >);
+}
+
+
+
+
+

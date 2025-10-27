@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts      Account[]
+  sessions      Session[]
+  transactions  Transaction[]
+  exchangeConnections ExchangeConnection[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  assetSymbol   String
+  type          String
+  quantity      Decimal
+  pricePerUnit  Decimal // in quote currency (e.g., USD)
+  fee           Decimal @default(0)
+  quoteCurrency String   @default("USD")
+  timestamp     DateTime
+  note          String?
+  // Sync metadata
+  source        String?   // e.g., "bitvavo" or "manual"
+  externalId    String?   // exchange trade/order id to de-duplicate
+  userEdited    Boolean   @default(false) // if true, do not overwrite on sync
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, assetSymbol])
+  @@index([userId, timestamp])
+  @@index([userId, source])
+  @@unique([userId, externalId])
+}
+
+model ExchangeConnection {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String   // e.g., "bitvavo"
+  label     String?  // optional nickname
+  apiKey    String
+  secretEnc String   // encrypted secret (iv:ciphertext:tag)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+  @@unique([userId, provider])
+}
