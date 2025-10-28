@@ -125,6 +125,23 @@ function Dashboard() {
         const data = await res.json(); if (res.ok) setVals(data);
     }
 
+    async function importAndSync() {
+        try {
+            const res = await fetch('/api/transactions/import-bitvavo', { method: 'POST' });
+            const e = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(e?.error || res.statusText);
+            await mutate();
+        } catch (err: any) {
+            alert('Import failed: ' + (err?.message || 'Unknown error'));
+            return;
+        }
+        try {
+            await syncBitvavoWithPrices(timeframe);
+        } catch (err: any) {
+            alert('Sync failed: ' + (err?.message || 'Unknown error'));
+        }
+    }
+
     async function importBitvavoTx() {
         const res = await fetch('/api/transactions/import-bitvavo', { method: 'POST' });
         if (res.ok) {
@@ -180,6 +197,7 @@ function Dashboard() {
             <div className="row" style={{ justifyContent: "space-between" }}>
                 <h1>Dashboard</h1>
                 <div className="row">
+                    <button className="btn" onClick={importAndSync} style={{ marginRight: 12 }}>Import + Sync (Bitvavo)</button>
                     <span>{(useSession().data?.user?.email) ?? ""}</span>
                     <button className="btn secondary" onClick={() => signOut()}>Sign out</button>
                 </div>
@@ -280,10 +298,7 @@ function Dashboard() {
                                 <option value="1Y">1Y</option>
                                 <option value="Max">Max</option>
                             </select>
-                            <button className="btn secondary" onClick={syncBitvavo}>                Sync Balances
-                            </button>
-                            <button className="btn" onClick={() => syncBitvavoWithPrices(timeframe)}>                Sync Balances + Prices (EUR)
-                            </button>
+                            {/* Sync buttons removed; use top Import + Sync */}
                         </div>
                     </div>) : (<form className="row" onSubmit={saveBitvavo}>
                         <input name="label" placeholder="Label (optional)" />
@@ -422,14 +437,12 @@ function Dashboard() {
                     <h3>Transactions</h3>
                     <div className="row">
                         <input placeholder="Search coin (e.g. BTC)" value={txSearch} onChange={(e) => setTxSearch(e.target.value)} style={{ minWidth: 220 }} />
-                        <button className="btn" onClick={importBitvavoTx}>Import from Bitvavo</button>
-                        <button className="btn secondary" onClick={clearAllTransactions}>Clear Transactions</button>
                     </div>
                 </div>
                 <table className="pretty">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            {/* <th>ID</th> */}
                             <th>Time</th>
                             <th>Action</th>
                             <th>Bought</th>
@@ -451,7 +464,7 @@ function Dashboard() {
                             if (editingId === t.id) {
                                 return (
                                     <tr key={t.id}>
-                                        <td>{t.id}</td>
+                                        {/* <td>{t.id}</td> */}
                                         <td><input type="datetime-local" value={new Date(edit.timestamp ?? t.timestamp).toISOString().slice(0, 16)} onChange={(e) => setEdit({ ...edit, timestamp: e.target.value })} /></td>
                                         <td>
                                             <select value={(edit.type ?? t.type)} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
@@ -490,7 +503,7 @@ function Dashboard() {
                             }
                             return (
                                 <tr key={t.id}>
-                                    <td>{t.id}</td>
+                                    {/* <td>{t.id}</td> */}
                                     <td>{new Date(t.timestamp).toLocaleString()}</td>
                                     <td>{t.type}</td>
                                     <td>{t.quantity} {t.assetSymbol}</td>
