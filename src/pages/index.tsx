@@ -1,6 +1,6 @@
 import { signIn, signOut, useSession } from "next-auth/react";
 import useSWR from "swr";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { computePortfolio, type Tx } from "@/lib/pnl";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export default function Home() {
@@ -51,6 +51,14 @@ function Dashboard() {
         }, {} as Record<string, number>);
         return computePortfolio(txList, priceMap);
     }, [txs, vals]);
+
+    // Auto-fetch Bitvavo valuations (incl. EUR) when connected
+    useEffect(() => {
+        if (conn?.connected) {
+            syncBitvavoWithPrices(timeframe);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [conn?.connected]);
 
     const combined = useMemo(() => {
         const apiMap = new Map<string, any>();
@@ -180,7 +188,10 @@ function Dashboard() {
                 <h3>Portfolio Summary</h3>
                 <div className="row" style={{ gap: 24 }}>
                     <div><strong>Value</strong>
-                        <div>€{portfolio.totals.marketValue.toLocaleString()}</div></div>
+                        <div>
+                            €{(vals?.totals?.valueTotalEUR ?? portfolio.totals.marketValue).toLocaleString()}
+                        </div>
+                    </div>
                     <div><strong>Buy In</strong>
                         <div>
                             €{portfolio.totals.totalCostBasis.toLocaleString()}

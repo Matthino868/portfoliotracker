@@ -1,9 +1,16 @@
 import { SessionProvider } from "next-auth/react";
+import Head from "next/head";
 import type { AppProps } from "next/app";
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={(pageProps as any).session}>
+      <Head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/monzanifabio/cryptofont/cryptofont.css"
+        />
+      </Head>
       <Component {...pageProps} />
       <style jsx global>{`
         body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; }
@@ -40,6 +47,7 @@ export default function App({ Component, pageProps }: AppProps) {
         .badge.pos { background: #ecfdf5; color: #065f46; }
         .badge.neg { background: #fef2f2; color: #991b1b; }
         @media (max-width: 640px) { .card-row .cell { min-width: auto; } }
+        .coin-icon { font-size: 18px; margin-right: 8px; vertical-align: middle; }
       `}</style>
     </SessionProvider>
   );
