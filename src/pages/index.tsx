@@ -222,7 +222,7 @@ function Dashboard() {
                     {combined.filter((c:any)=>!search || c.symbol.toLowerCase().includes(search.toLowerCase())).map((c:any)=> (
                         <div className="card-row" key={c.symbol}>
                             <div className="left">
-                                <div className="sym">{c.symbol}</div>
+                                <div className="sym"><i className={`cf cf-${c.symbol.toLowerCase()}`}></i> {c.symbol}</div>
                                 <div className="sub">Qty (TX): {c.qtyTx} • Qty (API): {c.qtyApiAvail+c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div>
                             </div>
                             <div className="right">
