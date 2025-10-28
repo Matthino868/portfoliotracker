@@ -534,19 +534,19 @@ function Dashboard() {
                                                 </td>
                                                 <td>
                                                     <div className="row">
-                                                        <input style={{ width: 90 }} type="text" value={(edit.assetSymbol ?? t.assetSymbol)} onChange={(e) => setEdit({ ...edit, assetSymbol: e.target.value })} />
+                                                        <input style={{ width: 30 }} type="text" value={(edit.assetSymbol ?? t.assetSymbol)} onChange={(e) => setEdit({ ...edit, assetSymbol: e.target.value })} />
                                                         <input style={{ width: 90 }} type="number" step="0.00000001" value={(edit.quantity ?? t.quantity)} onChange={(e) => setEdit({ ...edit, quantity: Number(e.target.value) })} />
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div className="row">
-                                                        <input style={{ width: 90 }} type="text" value={(edit.quoteCurrency ?? t.quoteCurrency)} onChange={(e) => setEdit({ ...edit, quoteCurrency: e.target.value })} />
+                                                        <input style={{ width: 30 }} type="text" value={(edit.quoteCurrency ?? t.quoteCurrency)} onChange={(e) => setEdit({ ...edit, quoteCurrency: e.target.value })} />
                                                         <input style={{ width: 90 }} type="number" step="0.01" value={(edit.pricePerUnit ?? t.pricePerUnit)} onChange={(e) => setEdit({ ...edit, pricePerUnit: Number(e.target.value) })} />
                                                     </div>
                                                 </td>
                                                 <td>{(edit.pricePerUnit ?? t.pricePerUnit)}</td>
-                                                <td><input style={{ width: 90 }} type="number" step="0.01" value={(edit.fee ?? t.fee)} onChange={(e) => setEdit({ ...edit, fee: Number(e.target.value) })} /></td>
-                                                <td><input type="text" value={(edit.note ?? t.note ?? '')} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></td>
+                                                <td><input style={{ width: 30 }} type="number" step="0.01" value={(edit.fee ?? t.fee)} onChange={(e) => setEdit({ ...edit, fee: Number(e.target.value) })} /></td>
+                                                <td><input style={{ width: 40 }} type="text" value={(edit.note ?? t.note ?? '')} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></td>
                                                 <td>{t.source ?? 'manual'}</td>
                                                 <td>
                                                     <div className="row">
