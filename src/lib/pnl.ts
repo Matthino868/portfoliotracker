@@ -1,10 +1,10 @@
 export type Tx = {
-  assetSymbol: string;
-  type: "BUY" | "SELL" | "TRANSFER_IN" | "TRANSFER_OUT" | "DEPOSIT" | "STAKING_REWARD";
-  quantity: number; // positive
-  pricePerUnit: number; // in USD
-  fee?: number; // in USD
-  timestamp: Date | string | number;
+	assetSymbol: string;
+	type: "BUY" | "SELL" | "TRANSFER_IN" | "TRANSFER_OUT" | "DEPOSIT" | "STAKING_REWARD";
+	quantity: number; // positive
+	pricePerUnit: number; // in USD
+	fee?: number; // in USD
+	timestamp: Date | string | number;
 };
 
 export type Lot = { qty: number; costPerUnit: number };
@@ -43,16 +43,16 @@ function fifoLots(transactions: Tx[]): { lots: Lot[]; realizedPnL: number } {
 	const txs = [...transactions].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
 	for (const tx of txs) {
 		const fee = tx.fee ?? 0;
-    if (
-      tx.type === "BUY" ||
-      tx.type === "TRANSFER_IN" ||
-      tx.type === "DEPOSIT" ||
-      tx.type === "STAKING_REWARD"
-    ) {
-      const total = tx.quantity * tx.pricePerUnit + fee;
-      const perUnit = total / tx.quantity;
-      lots.push({ qty: tx.quantity, costPerUnit: perUnit });
-    } else if (tx.type === "SELL" || tx.type === "TRANSFER_OUT") {
+		if (
+			tx.type === "BUY" ||
+			tx.type === "TRANSFER_IN" ||
+			tx.type === "DEPOSIT" ||
+			tx.type === "STAKING_REWARD"
+		) {
+			const total = tx.quantity * tx.pricePerUnit + fee;
+			const perUnit = total / tx.quantity;
+			lots.push({ qty: tx.quantity, costPerUnit: perUnit });
+		} else if (tx.type === "SELL" || tx.type === "TRANSFER_OUT") {
 			let toSell = tx.quantity;
 			let proceeds = tx.quantity * tx.pricePerUnit - fee; // reduce proceeds by fee
 			while (toSell > 1e-12 && lots.length > 0) {

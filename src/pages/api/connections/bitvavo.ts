@@ -35,7 +35,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json({ ok: true, connection: saved });
   }
 
-  res.setHeader("Allow", ["GET", "POST"]);
+  if (req.method === "DELETE") {
+    // Remove Bitvavo connection for this user; keep transactions intact
+    try {
+      await prisma.exchangeConnection.delete({
+        where: { userId_provider: { userId, provider: "bitvavo" } },
+      });
+    } catch (e: any) {
+      // If not found, treat as idempotent success
+    }
+    return res.status(204).end();
+  }
+
+  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
   return res.status(405).end("Method Not Allowed");
 }
-

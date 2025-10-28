@@ -14,7 +14,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Component {...pageProps} />
       <style jsx global>{`
         body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px;  }
         .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
@@ -23,6 +23,9 @@ export default function App({ Component, pageProps }: AppProps) {
         .btn.secondary { background: #fff; color: #111; }
         .row { display: flex; gap: 12px; align-items: center; }
         input, select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; }
+
+        /* Connect Bitvavo API modal */
+        form.column { display: flex; flex-direction: row; gap: 12px; }
 
         /* Prettier table styling with taller rows */
         table.pretty { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; border-collapse: separate; border-spacing: 0; }

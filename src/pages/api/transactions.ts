@@ -96,13 +96,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const assetSymbol = (isBuy
             ? h.receivedCurrency
             : isSell
-            ? h.sentCurrency
-            : (h.receivedCurrency || h.sentCurrency)) as string;
+              ? h.sentCurrency
+              : (h.receivedCurrency || h.sentCurrency)) as string;
           let quantity = isBuy
             ? Number(h.receivedAmount)
             : isSell
-            ? Number(h.sentAmount)
-            : Number(h.receivedAmount || h.sentAmount || 0);
+              ? Number(h.sentAmount)
+              : Number(h.receivedAmount || h.sentAmount || 0);
           const pricePerUnit = h.priceAmount != null ? Number(h.priceAmount) : 0;
           const fee = Number(h.feesAmount || 0);
           const quoteCurrency = h.priceCurrency ?? "EUR";
@@ -180,7 +180,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const manual = overrides.filter((t) => !t.externalId);
     const overrideNotInRemote = overrides.filter((t) => t.externalId && !merged.find((m) => m.externalId === t.externalId));
 
-    const all = [...merged, ...overrideNotInRemote, ...manual];
+    let all = [...merged, ...overrideNotInRemote, ...manual];
+    // If there is no active API connection, do not return user-edited transactions
+    // (keep them persisted in DB, just omit from response)
+    if (!conn) {
+      all = all.filter((t) => !t.userEdited);
+    }
     // Sort by timestamp desc for UI convenience
     all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return res.json(all);
