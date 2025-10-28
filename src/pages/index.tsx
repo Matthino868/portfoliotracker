@@ -30,12 +30,12 @@ function Dashboard() {
     } | null>(null);
 
     const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | 'YTD' | '1Y' | 'Max'>('1D');
-    const [search, setSearch] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [edit, setEdit] = useState<any>({});
     const [txSearch, setTxSearch] = useState("");
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement | null>(null);
+    const [portfolioHistory, setPortfolioHistory] = useState<Array<{ date: string; value: number }>>([]);
 
     // Connect Bitvavo modal state
     const [showConnect, setShowConnect] = useState(false);
@@ -71,9 +71,8 @@ function Dashboard() {
         if (vals?.valuations?.length) {
             for (const v of vals.valuations) fromApi.set(v.symbol, Number(v.priceEUR) || 0);
         }
-        const defaults = { BTC: 60000, ETH: 3000, SOL: 150, EUR: 1, USDC: 1, USD: 1 } as Record<string, number>;
         const priceMap: Record<string, number> = symbols.reduce((acc, s) => {
-            acc[s] = fromApi.get(s) ?? (defaults as any)[s] ?? 0;
+            acc[s] = fromApi.get(s) ?? 0;
             return acc;
         }, {} as Record<string, number>);
         return computePortfolio(allTxs, priceMap);
@@ -98,19 +97,6 @@ function Dashboard() {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [conn?.connected, timeframe]);
-
-    // When not connected, ensure the Transactions card reflects only DB items:
-    // - trigger a refresh
-    // - drop any ephemeral external (ext:*) items from SWR cache
-    // useEffect(() => {
-    //     if (conn && !conn.connected) {
-    //         // Remove any cached external items immediately
-    //         mutate((curr: any) => Array.isArray(curr) ? curr.filter((t: any) => !String(t.id || '').startsWith('ext:')) : curr, { revalidate: false } as any);
-    //         // Then revalidate to fetch DB-only list
-    //         mutate();
-    //     }
-    //     // eslint-disable-next-line react-hooks/exhaustive-deps
-    // }, [conn?.connected]);
 
     // Close user menu on outside click or Escape key
     useEffect(() => {
@@ -177,9 +163,6 @@ function Dashboard() {
         }).sort((x, y) => (y.valueApi || y.valueTx) - (x.valueApi || x.valueTx));
     }, [vals, portfolio]);
 
-    const filteredCombined = useMemo(() => {
-        return (combined ?? []).filter((c: any) => !search || c.symbol.toLowerCase().includes(search.toLowerCase()));
-    }, [combined, search]);
 
     // Portfolio side summary stats
     const sideStats = useMemo(() => {
@@ -308,292 +291,347 @@ function Dashboard() {
     }
 
     return (
-        <>
-
-            <div className="container">
-
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                    <h1>Dashboard</h1>
-                    <div className="row">
-                        <button className="btn" onClick={importAndSync} disabled={!conn?.connected} style={{ background: !conn?.connected ? '#a5a5a5ff' : '#111' }}>Sync</button>
-                        <div style={{ position: 'relative' }} ref={userMenuRef}>
-                            <button className="btn secondary" onClick={() => setUserMenuOpen((v) => !v)}>
-                                {(useSession().data?.user?.email) ?? "Account"} ▾
-                            </button>
-                            {userMenuOpen ? (
-                                <div className="card" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', minWidth: 220, padding: 8 }}>
-                                    {conn?.connected ? (
-                                        <button className="btn secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setUserMenuOpen(false); disconnectApi(); }}>
-                                            Disconnect API
-                                        </button>
-                                    ) : null}
-                                    <button className="btn" style={{ width: '100%', justifyContent: 'flex-start', marginTop: 8 }} onClick={() => { setUserMenuOpen(false); signOut(); }}>
-                                        Sign out
+        <div className="container">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+                <h1>Dashboard</h1>
+                <div className="row">
+                    <button className="btn" onClick={importAndSync} disabled={!conn?.connected} style={{ background: !conn?.connected ? '#a5a5a5ff' : '#111' }}>Sync</button>
+                    <div style={{ position: 'relative' }} ref={userMenuRef}>
+                        <button className="btn secondary" onClick={() => setUserMenuOpen((v) => !v)}>
+                            {(useSession().data?.user?.email) ?? "Account"} ▾
+                        </button>
+                        {userMenuOpen ? (
+                            <div className="card" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', minWidth: 220, padding: 8 }}>
+                                {conn?.connected ? (
+                                    <button className="btn secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setUserMenuOpen(false); disconnectApi(); }}>
+                                        Disconnect API
                                     </button>
+                                ) : null}
+                                <button className="btn" style={{ width: '100%', justifyContent: 'flex-start', marginTop: 8 }} onClick={() => { setUserMenuOpen(false); signOut(); }}>
+                                    Sign out
+                                </button>
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'stretch', gap: 16 }}>
+                {/* Left column: Chart + Positions */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* <div className="card" style={{ marginBottom: 12 }}>
+                        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <h3>Portfolio Value</h3>
+                            {historyChart ? (
+                                <div style={{ color: (historyChart.last - historyChart.first) >= 0 ? '#059669' : '#dc2626' }}>
+                                    {(historyChart.last - historyChart.first) >= 0 ? '↗ ' : '↘ '}€{Math.abs(historyChart.last - historyChart.first).toLocaleString()} ({(((historyChart.last / Math.max(1, historyChart.first)) - 1) * 100).toFixed(2)}%)
                                 </div>
                             ) : null}
                         </div>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'stretch', gap: 16 }}>
-                    {/* Positions (Combined) */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="card">
-                            <h3>Positions (Combined)</h3>
-                            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-                                <input placeholder="Search coin (e.g. BTC)" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220 }} />
-                                <div className="row" style={{ alignItems: 'center', gap: 12 }}>
-                                    <div style={{ color: '#6b7280', fontSize: 12 }}>
-                                        Qty (TX) is from transactions • Qty (API) + In Orders from Bitvavo
-                                    </div>
-                                    {!conn?.connected ? (
-                                        <button className="btn" onClick={() => setShowConnect(true)}>Add API</button>
-                                    ) : null}
-                                </div>
-                            </div>
-                            <div className="cards">
-                                {filteredCombined.length === 0 ? (
-                                    <div className="card-row"><div className="left"><div className="sub">No data available</div></div></div>
+                        {historyChart ? (
+                            <ChartWithHover history={portfolioHistory} chart={historyChart} />
+                        ) : (
+                            <div className="sub">Not enough data to render chart.</div>
+                        )}
+                    </div> */}
+                    <div className="card">
+                        <h3>Positions (Combined)</h3>
+                        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                            
+                            <div className="row" style={{ alignItems: 'center', gap: 12 }}>
+                                {!conn?.connected ? (
+                                    <button className="btn" onClick={() => setShowConnect(true)}>Add API</button>
                                 ) : null}
-                                {filteredCombined.map((c: any) => (
-                                    <div className="card-row" key={c.symbol}>
-                                        <div className="left">
-                                            <div className="sym"><i className={`cf cf-${c.symbol.toLowerCase()}`}></i> {c.symbol}</div>
-                                            <div className="sub">x{c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div>
-                                            {/* <div className="sub">Qty (TX): {c.qtyTx} • Qty (API): {c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div> */}
+                            </div>
+                        </div>
+                        <div className="cards">
+                            {combined.length === 0 ? (
+                                <div className="card-row"><div className="left"><div className="sub">No data available</div></div></div>
+                            ) : null}
+                            {combined.map((c: any) => (
+                                <div className="card-row" key={c.symbol}>
+                                    <div className="left">
+                                        <div className="sym"><i className={`cf cf-${c.symbol.toLowerCase()}`}></i> {c.symbol}</div>
+                                        <div className="sub">x{c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div>
+                                        {/* <div className="sub">Qty (TX): {c.qtyTx} • Qty (API): {c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div> */}
+                                    </div>
+                                    <div className="right">
+                                        <div className="cell">
+                                            <div className="label">Total Buy-in</div>
+                                            <div className="value">€{c.totalBuyIn?.toLocaleString?.() ?? c.totalBuyIn}</div>
+                                            {/* <div className="label">Price</div> */}
+                                            <div className="sub">Price: €{c.priceEUR.toLocaleString()}</div>
                                         </div>
-                                        <div className="right">
-                                            <div className="cell">
-                                                <div className="label">Total Buy-in</div>
-                                                <div className="value">€{c.totalBuyIn?.toLocaleString?.() ?? c.totalBuyIn}</div>
-                                                {/* <div className="label">Price</div> */}
-                                                <div className="sub">Price: €{c.priceEUR.toLocaleString()}</div>
-                                            </div>
-                                            <div className="cell">
-                                                <div className="label">Unrealized PnL</div>
-                                                <div className="value" style={{ color: (c.unrealized || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealized || 0) >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
-                                                <div className="sub" style={{ color: (c.unrealizedPct || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealizedPct || 0) >= 0 ? '+' : ''}{(c.unrealizedPct || 0).toFixed(2)}%</div>
-                                            </div>
-                                            {/* <div className="cell">
+                                        <div className="cell">
+                                            <div className="label">Unrealized PnL</div>
+                                            <div className="value" style={{ color: (c.unrealized || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealized || 0) >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
+                                            <div className="sub" style={{ color: (c.unrealizedPct || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealizedPct || 0) >= 0 ? '+' : ''}{(c.unrealizedPct || 0).toFixed(2)}%</div>
+                                        </div>
+                                        {/* <div className="cell">
                                     <div className="label">Avg Buy-in</div>
                                     <div className="value">€{c.avgBuyIn}</div>
                                 </div> */}
-                                            <div className="cell" style={{ display: 'none' }}>
-                                                <div className="label">Unrealized</div>
-                                                <div className="value" style={{ color: c.unrealized >= 0 ? '#059669' : '#dc2626' }}>{c.unrealized >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
-                                            </div>
-                                            <div className="cell" style={{ display: 'none' }}>
-                                                <div className="label">Realized</div>
-                                                <div className="value" style={{ color: c.realized >= 0 ? '#059669' : '#dc2626' }}>{c.realized >= 0 ? '+' : ''}€{(c.realized || 0).toLocaleString()}</div>
-                                            </div>
-                                            <div className="cell" style={{ display: 'none' }}>
-                                                <div className="label">Value (TX)</div>
-                                                <div className="value">€{(c.valueTx || 0).toLocaleString()}</div>
-                                            </div>
-                                            <div className="cell" >
-                                                <div className="label">Value (API)</div>
-                                                <div className="value">€{(c.valueApi || 0).toLocaleString()}</div>
-                                                <div className="sub">Avg Buy In: €{c.avgBuyIn.toLocaleString()}</div>
+                                        <div className="cell" style={{ display: 'none' }}>
+                                            <div className="label">Unrealized</div>
+                                            <div className="value" style={{ color: c.unrealized >= 0 ? '#059669' : '#dc2626' }}>{c.unrealized >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
+                                        </div>
+                                        <div className="cell" style={{ display: 'none' }}>
+                                            <div className="label">Realized</div>
+                                            <div className="value" style={{ color: c.realized >= 0 ? '#059669' : '#dc2626' }}>{c.realized >= 0 ? '+' : ''}€{(c.realized || 0).toLocaleString()}</div>
+                                        </div>
+                                        <div className="cell" style={{ display: 'none' }}>
+                                            <div className="label">Value (TX)</div>
+                                            <div className="value">€{(c.valueTx || 0).toLocaleString()}</div>
+                                        </div>
+                                        <div className="cell" >
+                                            <div className="label">Value (API)</div>
+                                            <div className="value">€{(c.valueApi || 0).toLocaleString()}</div>
+                                            <div className="sub">Avg Buy In: €{c.avgBuyIn.toLocaleString()}</div>
 
-                                            </div>
                                         </div>
                                     </div>
-                                ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                {/* Side menu with fixed width */}
+                <div style={{ width: 320, flex: '0 0 320px' }}>
+                    <div className="card">
+                        <div style={{ fontWeight: 700, marginBottom: 8 }}>Portfolio</div>
+                        <div className="row" style={{ gap: 16, marginBottom: 8 }}>
+                            <div>
+                                <div className="sub" style={{ fontWeight: 700 }}>Value</div>
+                                <div>€{(vals?.totals?.valueTotalEUR ?? portfolio.totals.marketValue).toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div className="sub" style={{ fontWeight: 700 }}>Buy In</div>
+                                <div>€{portfolio.totals.totalCostBasis.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div className="row" style={{ gap: 16 }}>
+                            <div>
+                                <div className="sub" style={{ fontWeight: 700 }}>Unrealized</div>
+                                <div style={{ color: (portfolio.totals.unrealizedPnL || 0) >= 0 ? '#059669' : '#dc2626' }}>
+                                    {(portfolio.totals.unrealizedPnL || 0) >= 0 ? '↗ ' : '↘ '}€{portfolio.totals.unrealizedPnL.toLocaleString()}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="sub" style={{ fontWeight: 700 }}>Realized</div>
+                                <div style={{ color: (portfolio.totals.realizedPnL || 0) >= 0 ? '#059669' : '#dc2626' }}>
+                                    {(portfolio.totals.realizedPnL || 0) >= 0 ? '↗ ' : '↘ '}€{portfolio.totals.realizedPnL.toLocaleString()}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    {/* Side menu with fixed width */}
-                    <div style={{ width: 320, flex: '0 0 320px' }}>
-                        <div className="card">
-                            <div style={{ fontWeight: 700, marginBottom: 8 }}>Portfolio</div>
-                            <div className="row" style={{ gap: 16, marginBottom: 8 }}>
-                                <div>
-                                    <div className="sub">Value</div>
-                                    <div>€{(vals?.totals?.valueTotalEUR ?? portfolio.totals.marketValue).toLocaleString()}</div>
-                                </div>
-                                <div>
-                                    <div className="sub">Buy In</div>
-                                    <div>€{portfolio.totals.totalCostBasis.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <div className="row" style={{ gap: 16 }}>
-                                <div>
-                                    <div className="sub">Unrealized</div>
-                                    <div style={{ color: (portfolio.totals.unrealizedPnL || 0) >= 0 ? '#059669' : '#dc2626' }}>
-                                        {(portfolio.totals.unrealizedPnL || 0) >= 0 ? '+' : ''}€{portfolio.totals.unrealizedPnL.toLocaleString()}
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="sub">Realized</div>
-                                    <div style={{ color: (portfolio.totals.realizedPnL || 0) >= 0 ? '#059669' : '#dc2626' }}>
-                                        {(portfolio.totals.realizedPnL || 0) >= 0 ? '+' : ''}€{portfolio.totals.realizedPnL.toLocaleString()}
-                                    </div>
+                    <div className="card" style={{ marginTop: 12 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 8 }}>Capital</div>
+                        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                            <div>Invested capital</div>
+                            <div>€{sideStats.invested.toLocaleString()}</div>
+                        </div>
+                        <div style={{ fontWeight: 700, margin: '12px 0 8px' }}>Performance Breakdown</div>
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                            <div>Price gain</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div>€{sideStats.priceGain.toLocaleString()}</div>
+                                <div style={{ color: sideStats.priceGain >= 0 ? '#059669' : '#dc2626' }}>
+                                    {sideStats.priceGain >= 0 ? '↗ ' : '↘ '}{sideStats.priceGainPct.toFixed(2)}%
                                 </div>
                             </div>
                         </div>
-                        <div className="card" style={{ marginTop: 12 }}>
-                            <div style={{ fontWeight: 700, marginBottom: 8 }}>Capital</div>
-                            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-                                <div>Invested capital</div>
-                                <div>€{sideStats.invested.toLocaleString()}</div>
-                            </div>
-                            <div style={{ fontWeight: 700, margin: '12px 0 8px' }}>Performance Breakdown</div>
-                            <div className="row" style={{ justifyContent: 'space-between' }}>
-                                <div>Price gain</div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div>€{sideStats.priceGain.toLocaleString()}</div>
-                                    <div style={{ color: sideStats.priceGain >= 0 ? '#059669' : '#dc2626' }}>
-                                        {sideStats.priceGain >= 0 ? '↗ ' : '↘ '}{sideStats.priceGainPct.toFixed(2)}%
-                                    </div>
+                        {/* <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
+                            <div>Dividends</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div>€{sideStats.dividends.toLocaleString()}</div>
+                                <div style={{ color: sideStats.dividends >= 0 ? '#059669' : '#dc2626' }}>
+                                    {sideStats.dividends >= 0 ? '↗ ' : '↘ '}{sideStats.dividendsPct.toFixed(2)}%
                                 </div>
                             </div>
-                            <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                                <div>Dividends</div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div>€{sideStats.dividends.toLocaleString()}</div>
-                                    <div style={{ color: sideStats.dividends >= 0 ? '#059669' : '#dc2626' }}>
-                                        {sideStats.dividends >= 0 ? '↗ ' : '↘ '}{sideStats.dividendsPct.toFixed(2)}%
-                                    </div>
+                        </div> */}
+                        <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
+                            <div>Realized gain</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div>€{sideStats.realizedGain.toLocaleString()}</div>
+                                <div style={{ color: sideStats.realizedGain >= 0 ? '#059669' : '#dc2626' }}>
+                                    {sideStats.realizedGain >= 0 ? '↗ ' : '↘ '}{sideStats.realizedGainPct.toFixed(2)}%
                                 </div>
                             </div>
-                            <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                                <div>Realized gain</div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div>€{sideStats.realizedGain.toLocaleString()}</div>
-                                    <div style={{ color: sideStats.realizedGain >= 0 ? '#059669' : '#dc2626' }}>
-                                        {sideStats.realizedGain >= 0 ? '↗ ' : '↘ '}{sideStats.realizedGainPct.toFixed(2)}%
-                                    </div>
+                        </div>
+                        {/* <div style={{ fontWeight: 700, margin: '12px 0 8px' }}>Transaction costs</div>
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                            <div>Transaction costs</div>
+                            <div>€{-Math.abs(sideStats.txCosts).toLocaleString()}</div>
+                        </div>
+                        <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
+                            <div>Taxes</div>
+                            <div>€{Number(sideStats.taxes || 0).toLocaleString()}</div>
+                        </div> */}
+                        <div style={{ borderTop: '1px solid #e5e7eb', margin: '12px 0' }} />
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                            <div style={{ fontWeight: 700 }}>Total return</div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ color: sideStats.totalReturn >= 0 ? '#059669' : '#dc2626', fontWeight: 700 }}>
+                                    {sideStats.totalReturn >= 0 ? '↗ ' : '↘ '}{sideStats.totalReturnPct.toFixed(2)}%
                                 </div>
-                            </div>
-                            <div style={{ fontWeight: 700, margin: '12px 0 8px' }}>Transaction costs</div>
-                            <div className="row" style={{ justifyContent: 'space-between' }}>
-                                <div>Transaction costs</div>
-                                <div>€{-Math.abs(sideStats.txCosts).toLocaleString()}</div>
-                            </div>
-                            <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                                <div>Taxes</div>
-                                <div>€{Number(sideStats.taxes || 0).toLocaleString()}</div>
-                            </div>
-                            <div style={{ borderTop: '1px solid #e5e7eb', margin: '12px 0' }} />
-                            <div className="row" style={{ justifyContent: 'space-between' }}>
-                                <div style={{ fontWeight: 700 }}>Total return</div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ color: sideStats.totalReturn >= 0 ? '#059669' : '#dc2626', fontWeight: 700 }}>
-                                        {sideStats.totalReturn >= 0 ? '↗ ' : '↘ '}{sideStats.totalReturnPct.toFixed(2)}%
-                                    </div>
-                                    <div style={{ fontWeight: 700 }}>€{sideStats.totalReturn.toLocaleString()}</div>
-                                </div>
+                                <div style={{ fontWeight: 700 }}>{sideStats.totalReturn >= 0 ? '+' : '-'}€{sideStats.totalReturn.toLocaleString()}</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {/* Transactions table with edit capability */}
-                <div className="card">
-                    <div className="row" style={{ justifyContent: 'space-between' }}>
-                        <h3>Transactions</h3>
-                        <div className="row">
-                            <input placeholder="Search coin (e.g. BTC)" value={txSearch} onChange={(e) => setTxSearch(e.target.value)} style={{ minWidth: 220 }} />
-                        </div>
+            </div>
+            {/* Transactions table with edit capability */}
+            <div className="card">
+                <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <h3>Transactions</h3>
+                    <div className="row">
+                        <input placeholder="Search coin (e.g. BTC)" value={txSearch} onChange={(e) => setTxSearch(e.target.value)} style={{ minWidth: 220 }} />
                     </div>
-                    <table className="pretty">
-                        <thead>
-                            <tr>
-                                {/* <th>ID</th> */}
-                                <th>Time</th>
-                                <th>Action</th>
-                                <th>Bought</th>
-                                <th>Paid</th>
-                                <th>Price</th>
-                                <th>Fee</th>
-                                <th>Note</th>
-                                <th>Source</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(txs ?? [])
-                                .filter((t: any) => !txSearch || (t.assetSymbol || '').toLowerCase().includes(txSearch.toLowerCase()))
-                                .slice()
-                                .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                                .map((t: any) => {
-                                    const paidAmount = Number(t.quantity) * Number(t.pricePerUnit) + Number(t.fee || 0);
-                                    if (editingId === t.id) {
-                                        return (
-                                            <tr key={t.id}>
-                                                {/* <td>{t.id}</td> */}
-                                                <td><input type="datetime-local" value={new Date(edit.timestamp ?? t.timestamp).toISOString().slice(0, 16)} onChange={(e) => setEdit({ ...edit, timestamp: e.target.value })} /></td>
-                                                <td>
-                                                    <select value={(edit.type ?? t.type)} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
-                                                        <option>BUY</option>
-                                                        <option>SELL</option>
-                                                        <option>TRANSFER_IN</option>
-                                                        <option>TRANSFER_OUT</option>
-                                                        <option>DEPOSIT</option>
-                                                        <option>STAKING_REWARD</option>
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <div className="row">
-                                                        <input style={{ width: 30 }} type="text" value={(edit.assetSymbol ?? t.assetSymbol)} onChange={(e) => setEdit({ ...edit, assetSymbol: e.target.value })} />
-                                                        <input style={{ width: 90 }} type="number" step="0.00000001" value={(edit.quantity ?? t.quantity)} onChange={(e) => setEdit({ ...edit, quantity: Number(e.target.value) })} />
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div className="row">
-                                                        <input style={{ width: 30 }} type="text" value={(edit.quoteCurrency ?? t.quoteCurrency)} onChange={(e) => setEdit({ ...edit, quoteCurrency: e.target.value })} />
-                                                        <input style={{ width: 90 }} type="number" step="0.01" value={(edit.pricePerUnit ?? t.pricePerUnit)} onChange={(e) => setEdit({ ...edit, pricePerUnit: Number(e.target.value) })} />
-                                                    </div>
-                                                </td>
-                                                <td>{(edit.pricePerUnit ?? t.pricePerUnit)}</td>
-                                                <td><input style={{ width: 30 }} type="number" step="0.01" value={(edit.fee ?? t.fee)} onChange={(e) => setEdit({ ...edit, fee: Number(e.target.value) })} /></td>
-                                                <td><input style={{ width: 40 }} type="text" value={(edit.note ?? t.note ?? '')} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></td>
-                                                <td>{t.source ?? 'manual'}</td>
-                                                <td>
-                                                    <div className="row">
-                                                        <button className="btn" onClick={(e) => { e.preventDefault(); saveEdit(); }}>Save</button>
-                                                        <button className="btn secondary" onClick={(e) => { e.preventDefault(); setEditingId(null); setEdit({}); }}>Cancel</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    }
+                </div>
+                <table className="pretty">
+                    <thead>
+                        <tr>
+                            {/* <th>ID</th> */}
+                            <th>Time</th>
+                            <th>Action</th>
+                            <th>Bought</th>
+                            <th>Paid</th>
+                            <th>Price</th>
+                            <th>Fee</th>
+                            <th>Note</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {(txs ?? [])
+                            .filter((t: any) => !txSearch || (t.assetSymbol || '').toLowerCase().includes(txSearch.toLowerCase()))
+                            .slice()
+                            .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                            .map((t: any) => {
+                                const paidAmount = Number(t.quantity) * Number(t.pricePerUnit) + Number(t.fee || 0);
+                                if (editingId === t.id) {
                                     return (
                                         <tr key={t.id}>
                                             {/* <td>{t.id}</td> */}
-                                            <td>{new Date(t.timestamp).toLocaleString()}</td>
-                                            <td>{t.type}</td>
-                                            <td>{t.quantity} {t.assetSymbol}</td>
-                                            <td>{paidAmount.toFixed(2)} {t.quoteCurrency}</td>
-                                            <td>{t.pricePerUnit}</td>
-                                            <td>{t.fee}</td>
-                                            <td>{t.note ?? ''}</td>
-                                            <td>{t.source ?? 'manual'}{t.userEdited ? ' • edited' : ''}</td>
-                                            <td><button className="btn secondary" onClick={(e) => { e.preventDefault(); setEditingId(t.id); setEdit({ externalId: t.externalId, assetSymbol: t.assetSymbol, type: t.type, quantity: t.quantity, quoteCurrency: t.quoteCurrency, pricePerUnit: t.pricePerUnit, fee: t.fee, timestamp: t.timestamp, note: t.note ?? '' }); }}>Edit</button></td>
+                                            <td><input type="datetime-local" value={new Date(edit.timestamp ?? t.timestamp).toISOString().slice(0, 16)} onChange={(e) => setEdit({ ...edit, timestamp: e.target.value })} /></td>
+                                            <td>
+                                                <select value={(edit.type ?? t.type)} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
+                                                    <option>BUY</option>
+                                                    <option>SELL</option>
+                                                    <option>TRANSFER_IN</option>
+                                                    <option>TRANSFER_OUT</option>
+                                                    <option>DEPOSIT</option>
+                                                    <option>STAKING_REWARD</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <div className="row">
+                                                    <input style={{ width: 30 }} type="text" value={(edit.assetSymbol ?? t.assetSymbol)} onChange={(e) => setEdit({ ...edit, assetSymbol: e.target.value })} />
+                                                    <input style={{ width: 90 }} type="number" step="0.00000001" value={(edit.quantity ?? t.quantity)} onChange={(e) => setEdit({ ...edit, quantity: Number(e.target.value) })} />
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="row">
+                                                    <input style={{ width: 30 }} type="text" value={(edit.quoteCurrency ?? t.quoteCurrency)} onChange={(e) => setEdit({ ...edit, quoteCurrency: e.target.value })} />
+                                                    <input style={{ width: 90 }} type="number" step="0.01" value={(edit.pricePerUnit ?? t.pricePerUnit)} onChange={(e) => setEdit({ ...edit, pricePerUnit: Number(e.target.value) })} />
+                                                </div>
+                                            </td>
+                                            <td>{(edit.pricePerUnit ?? t.pricePerUnit)}</td>
+                                            <td><input style={{ width: 30 }} type="number" step="0.01" value={(edit.fee ?? t.fee)} onChange={(e) => setEdit({ ...edit, fee: Number(e.target.value) })} /></td>
+                                            <td><input style={{ width: 40 }} type="text" value={(edit.note ?? t.note ?? '')} onChange={(e) => setEdit({ ...edit, note: e.target.value })} /></td>
+                                            <td>{t.source ?? 'manual'}</td>
+                                            <td>
+                                                <div className="row">
+                                                    <button className="btn" onClick={(e) => { e.preventDefault(); saveEdit(); }}>Save</button>
+                                                    <button className="btn secondary" onClick={(e) => { e.preventDefault(); setEditingId(null); setEdit({}); }}>Cancel</button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
-                                })}
-                        </tbody>
-                    </table>
-                </div>
-                {showConnect ? (
-                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-                        <div className="card" style={{ maxWidth: '90%', padding: 16, background: 'white' }}>
-                            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-                                <h3>Connect Bitvavo API</h3>
-                                <button className="btn secondary" onClick={() => setShowConnect(false)}>Close</button>
-                            </div>
-                            <form onSubmit={connectBitvavo} className="column" style={{ gap: 8 }}>
-                                <input placeholder="Label (optional)" value={apiForm.label} onChange={(e) => setApiForm({ ...apiForm, label: e.target.value })} />
-                                <input placeholder="API Key" value={apiForm.apiKey} onChange={(e) => setApiForm({ ...apiForm, apiKey: e.target.value })} required />
-                                <input placeholder="API Secret" value={apiForm.apiSecret} onChange={(e) => setApiForm({ ...apiForm, apiSecret: e.target.value })} required />
-                                <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-                                    <button type="submit" className="btn">Connect</button>
-                                </div>
-                            </form>
+                                }
+                                return (
+                                    <tr key={t.id}>
+                                        {/* <td>{t.id}</td> */}
+                                        <td>{new Date(t.timestamp).toLocaleString()}</td>
+                                        <td>{t.type}</td>
+                                        <td>{t.quantity} {t.assetSymbol}</td>
+                                        <td>{paidAmount.toFixed(2)} {t.quoteCurrency}</td>
+                                        <td>{t.pricePerUnit}</td>
+                                        <td>{t.fee}</td>
+                                        <td>{t.note ?? ''}</td>
+                                        <td>{t.source ?? 'manual'}{t.userEdited ? ' • edited' : ''}</td>
+                                        <td><button className="btn secondary" onClick={(e) => { e.preventDefault(); setEditingId(t.id); setEdit({ externalId: t.externalId, assetSymbol: t.assetSymbol, type: t.type, quantity: t.quantity, quoteCurrency: t.quoteCurrency, pricePerUnit: t.pricePerUnit, fee: t.fee, timestamp: t.timestamp, note: t.note ?? '' }); }}>Edit</button></td>
+                                    </tr>
+                                );
+                            })}
+                    </tbody>
+                </table>
+            </div>
+            {showConnect ? (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <div className="card" style={{ maxWidth: '90%', padding: 16, background: 'white' }}>
+                        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                            <h3>Connect Bitvavo API</h3>
+                            <button className="btn secondary" onClick={() => setShowConnect(false)}>Close</button>
                         </div>
+                        <form onSubmit={connectBitvavo} className="column" style={{ gap: 8 }}>
+                            <input placeholder="Label (optional)" value={apiForm.label} onChange={(e) => setApiForm({ ...apiForm, label: e.target.value })} />
+                            <input placeholder="API Key" value={apiForm.apiKey} onChange={(e) => setApiForm({ ...apiForm, apiKey: e.target.value })} required />
+                            <input placeholder="API Secret" value={apiForm.apiSecret} onChange={(e) => setApiForm({ ...apiForm, apiSecret: e.target.value })} required />
+                            <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+                                <button type="submit" className="btn">Connect</button>
+                            </div>
+                        </form>
                     </div>
-                ) : null}
-            </div > </>);
+                </div>
+            ) : null}
+        </div>);
 }
 
-// Simple modal styles use inline for portability
+// Inline component to render hoverable SVG chart without external deps
+function ChartWithHover({ history, chart }: { history: Array<{ date: string; value: number }>; chart: { w: number; h: number; pad: number; path: string; min: number; max: number; first: number; last: number; n: number } }) {
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+    const onMove = (e: any) => {
+        const el = svgRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / Math.max(1, rect.width)));
+        const xView = frac * chart.w;
+        const t = (xView - chart.pad) / Math.max(1, (chart.w - 2 * chart.pad));
+        const tClamped = Math.min(1, Math.max(0, t));
+        const i = Math.round(tClamped * (chart.n - 1));
+        setHoverIndex(i);
+    };
+    const onLeave = () => setHoverIndex(null);
+
+    const valueAt = (i: number) => history[i]?.value ?? 0;
+    const dateAt = (i: number) => history[i]?.date ?? '';
+    const xFor = (i: number) => chart.pad + (i * (chart.w - 2 * chart.pad)) / Math.max(1, (chart.n - 1));
+    const yFor = (v: number) => {
+        const span = Math.max(1, chart.max - chart.min);
+        return chart.pad + (chart.h - 2 * chart.pad) * (1 - (v - chart.min) / span);
+    };
+
+    const hx = hoverIndex != null ? xFor(hoverIndex) : null;
+    const hy = hoverIndex != null ? yFor(valueAt(hoverIndex)) : null;
+    const hval = hoverIndex != null ? valueAt(hoverIndex) : null;
+    const hdate = hoverIndex != null ? dateAt(hoverIndex) : null;
+
+    return (
+        <svg ref={svgRef} onMouseMove={onMove} onMouseLeave={onLeave} viewBox={`0 0 ${chart.w} ${chart.h}`} style={{ width: '100%', height: 220, cursor: 'crosshair' }}>
+            <path d={chart.path} fill="none" stroke="#111" strokeWidth={2} />
+            <line x1={12} y1={chart.h - 12} x2={chart.w - 12} y2={chart.h - 12} stroke="#e5e7eb" strokeWidth={1} />
+            {hoverIndex != null && hx != null && hy != null ? (
+                <>
+                    <line x1={hx} y1={chart.pad} x2={hx} y2={chart.h - chart.pad} stroke="#9ca3af" strokeDasharray="4,3" />
+                    <circle cx={hx} cy={hy} r={3} fill="#111" />
+                    <rect x={Math.min(chart.w - 180, Math.max(12, hx + 8))} y={chart.pad + 8} width={168} height={40} rx={6} fill="#ffffff" stroke="#e5e7eb" />
+                    <text x={Math.min(chart.w - 172, Math.max(16, hx + 12))} y={chart.pad + 26} fontSize="12" fill="#111">{hdate}</text>
+                    <text x={Math.min(chart.w - 172, Math.max(16, hx + 12))} y={chart.pad + 42} fontSize="12" fill="#111">€{(hval ?? 0).toLocaleString()}</text>
+                </>
+            ) : null}
+        </svg>
+    );
+}

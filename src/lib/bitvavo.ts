@@ -42,7 +42,7 @@ export async function bitvavoRequest<T>(
   });
 
   const url = `${BASE_URL}${path}`;
-  console.log("Bitvavo request:", { url, path, body });
+  // console.log("Bitvavo request:", { url, path, body });
   const res = await fetch(url, {
     method,
     headers: {
@@ -63,6 +63,19 @@ export async function bitvavoRequest<T>(
     throw new Error(`Bitvavo API ${res.status}: ${text}`);
   }
 
+  return JSON.parse(text) as T;
+}
+
+// Public (unsigned) Bitvavo request for endpoints like candles, ticker, etc.
+export async function bitvavoPublicRequest<T>(path: string): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Bitvavo public API ${res.status}: ${text}`);
   return JSON.parse(text) as T;
 }
 
