@@ -293,7 +293,7 @@ function Dashboard() {
     return (
         <div className="container">
             <div className="row" style={{ justifyContent: "space-between" }}>
-                <h1>Dashboard</h1>
+                <h1 style={{fontWeight:700, fontSize:24}}>Dashboard</h1>
                 <div className="row">
                     <button className="btn" onClick={importAndSync} disabled={!conn?.connected} style={{ background: !conn?.connected ? '#a5a5a5ff' : '#111' }}>Sync</button>
                     <div style={{ position: 'relative' }} ref={userMenuRef}>
@@ -315,26 +315,12 @@ function Dashboard() {
                     </div>
                 </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'stretch', gap: 16 }}>
+            {/* <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'stretch', gap: 16 }}> */} 
+            <div className="flex flex-col-reverse md:flex-row items-start justify-stretch gap-4"> 
                 {/* Left column: Chart + Positions */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* <div className="card" style={{ marginBottom: 12 }}>
-                        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <h3>Portfolio Value</h3>
-                            {historyChart ? (
-                                <div style={{ color: (historyChart.last - historyChart.first) >= 0 ? '#059669' : '#dc2626' }}>
-                                    {(historyChart.last - historyChart.first) >= 0 ? '↗ ' : '↘ '}€{Math.abs(historyChart.last - historyChart.first).toLocaleString()} ({(((historyChart.last / Math.max(1, historyChart.first)) - 1) * 100).toFixed(2)}%)
-                                </div>
-                            ) : null}
-                        </div>
-                        {historyChart ? (
-                            <ChartWithHover history={portfolioHistory} chart={historyChart} />
-                        ) : (
-                            <div className="sub">Not enough data to render chart.</div>
-                        )}
-                    </div> */}
                     <div className="card">
-                        <h3>Positions (Combined)</h3>
+                        <h3 style={{fontWeight:700, fontSize: 24}}>Positions (Combined)</h3>
                         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                             
                             <div className="row" style={{ alignItems: 'center', gap: 12 }}>
@@ -348,20 +334,20 @@ function Dashboard() {
                                 <div className="card-row"><div className="left"><div className="sub">No data available</div></div></div>
                             ) : null}
                             {combined.map((c: any) => (
-                                <div className="card-row" key={c.symbol}>
-                                    <div className="left">
+                                <div className="card-row flex flex-col lg:flex-row justify-between gap-4" key={c.symbol}>
+                                    <div className="left self-start">
                                         <div className="sym"><i className={`cf cf-${c.symbol.toLowerCase()}`}></i> {c.symbol}</div>
                                         <div className="sub">x{c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div>
                                         {/* <div className="sub">Qty (TX): {c.qtyTx} • Qty (API): {c.qtyApiAvail + c.qtyApiInOrder} • In Orders: {c.qtyApiInOrder}</div> */}
                                     </div>
-                                    <div className="right">
-                                        <div className="cell">
+                                    <div className="right flex flex-row gap-0 lg:gap-4 items-end self-end">
+                                        <div className="flex flex-col items-end cell">
                                             <div className="label">Total Buy-in</div>
                                             <div className="value">€{c.totalBuyIn?.toLocaleString?.() ?? c.totalBuyIn}</div>
                                             {/* <div className="label">Price</div> */}
                                             <div className="sub">Price: €{c.priceEUR.toLocaleString()}</div>
                                         </div>
-                                        <div className="cell">
+                                        <div className="flex flex-col items-end cell">
                                             <div className="label">Unrealized PnL</div>
                                             <div className="value" style={{ color: (c.unrealized || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealized || 0) >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
                                             <div className="sub" style={{ color: (c.unrealizedPct || 0) >= 0 ? '#059669' : '#dc2626' }}>{(c.unrealizedPct || 0) >= 0 ? '+' : ''}{(c.unrealizedPct || 0).toFixed(2)}%</div>
@@ -369,7 +355,7 @@ function Dashboard() {
                                         {/* <div className="cell">
                                     <div className="label">Avg Buy-in</div>
                                     <div className="value">€{c.avgBuyIn}</div>
-                                </div> */}
+                                    </div> */}
                                         <div className="cell" style={{ display: 'none' }}>
                                             <div className="label">Unrealized</div>
                                             <div className="value" style={{ color: c.unrealized >= 0 ? '#059669' : '#dc2626' }}>{c.unrealized >= 0 ? '+' : ''}€{(c.unrealized || 0).toLocaleString()}</div>
@@ -382,7 +368,7 @@ function Dashboard() {
                                             <div className="label">Value (TX)</div>
                                             <div className="value">€{(c.valueTx || 0).toLocaleString()}</div>
                                         </div>
-                                        <div className="cell" >
+                                        <div className="flex flex-col items-end cell" >
                                             <div className="label">Value (API)</div>
                                             <div className="value">€{(c.valueApi || 0).toLocaleString()}</div>
                                             <div className="sub">Avg Buy In: €{c.avgBuyIn.toLocaleString()}</div>
@@ -395,9 +381,10 @@ function Dashboard() {
                     </div>
                 </div>
                 {/* Side menu with fixed width */}
-                <div style={{ width: 320, flex: '0 0 320px' }}>
+                {/* <div style={{ width: 320, flex: '0 0 320px' }}> */}
+                <div className="w-full md:w-80 flex-shrink-0">
                     <div className="card">
-                        <div style={{ fontWeight: 700, marginBottom: 8 }}>Portfolio</div>
+                        <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 24 }}>Portfolio</div>
                         <div className="row" style={{ gap: 16, marginBottom: 8 }}>
                             <div>
                                 <div className="sub" style={{ fontWeight: 700 }}>Value</div>
@@ -422,8 +409,8 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="card" style={{ marginTop: 12 }}>
+                        <div style={{ borderTop: '1px solid #e5e7eb', margin: '12px 0' }} />
+                    
                         <div style={{ fontWeight: 700, marginBottom: 8 }}>Capital</div>
                         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                             <div>Invested capital</div>
@@ -439,15 +426,6 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                        {/* <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                            <div>Dividends</div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div>€{sideStats.dividends.toLocaleString()}</div>
-                                <div style={{ color: sideStats.dividends >= 0 ? '#059669' : '#dc2626' }}>
-                                    {sideStats.dividends >= 0 ? '↗ ' : '↘ '}{sideStats.dividendsPct.toFixed(2)}%
-                                </div>
-                            </div>
-                        </div> */}
                         <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
                             <div>Realized gain</div>
                             <div style={{ textAlign: 'right' }}>
@@ -457,15 +435,6 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                        {/* <div style={{ fontWeight: 700, margin: '12px 0 8px' }}>Transaction costs</div>
-                        <div className="row" style={{ justifyContent: 'space-between' }}>
-                            <div>Transaction costs</div>
-                            <div>€{-Math.abs(sideStats.txCosts).toLocaleString()}</div>
-                        </div>
-                        <div className="row" style={{ justifyContent: 'space-between', marginTop: 6 }}>
-                            <div>Taxes</div>
-                            <div>€{Number(sideStats.taxes || 0).toLocaleString()}</div>
-                        </div> */}
                         <div style={{ borderTop: '1px solid #e5e7eb', margin: '12px 0' }} />
                         <div className="row" style={{ justifyContent: 'space-between' }}>
                             <div style={{ fontWeight: 700 }}>Total return</div>
@@ -586,52 +555,4 @@ function Dashboard() {
                 </div>
             ) : null}
         </div>);
-}
-
-// Inline component to render hoverable SVG chart without external deps
-function ChartWithHover({ history, chart }: { history: Array<{ date: string; value: number }>; chart: { w: number; h: number; pad: number; path: string; min: number; max: number; first: number; last: number; n: number } }) {
-    const svgRef = useRef<SVGSVGElement | null>(null);
-    const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-    const onMove = (e: any) => {
-        const el = svgRef.current;
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / Math.max(1, rect.width)));
-        const xView = frac * chart.w;
-        const t = (xView - chart.pad) / Math.max(1, (chart.w - 2 * chart.pad));
-        const tClamped = Math.min(1, Math.max(0, t));
-        const i = Math.round(tClamped * (chart.n - 1));
-        setHoverIndex(i);
-    };
-    const onLeave = () => setHoverIndex(null);
-
-    const valueAt = (i: number) => history[i]?.value ?? 0;
-    const dateAt = (i: number) => history[i]?.date ?? '';
-    const xFor = (i: number) => chart.pad + (i * (chart.w - 2 * chart.pad)) / Math.max(1, (chart.n - 1));
-    const yFor = (v: number) => {
-        const span = Math.max(1, chart.max - chart.min);
-        return chart.pad + (chart.h - 2 * chart.pad) * (1 - (v - chart.min) / span);
-    };
-
-    const hx = hoverIndex != null ? xFor(hoverIndex) : null;
-    const hy = hoverIndex != null ? yFor(valueAt(hoverIndex)) : null;
-    const hval = hoverIndex != null ? valueAt(hoverIndex) : null;
-    const hdate = hoverIndex != null ? dateAt(hoverIndex) : null;
-
-    return (
-        <svg ref={svgRef} onMouseMove={onMove} onMouseLeave={onLeave} viewBox={`0 0 ${chart.w} ${chart.h}`} style={{ width: '100%', height: 220, cursor: 'crosshair' }}>
-            <path d={chart.path} fill="none" stroke="#111" strokeWidth={2} />
-            <line x1={12} y1={chart.h - 12} x2={chart.w - 12} y2={chart.h - 12} stroke="#e5e7eb" strokeWidth={1} />
-            {hoverIndex != null && hx != null && hy != null ? (
-                <>
-                    <line x1={hx} y1={chart.pad} x2={hx} y2={chart.h - chart.pad} stroke="#9ca3af" strokeDasharray="4,3" />
-                    <circle cx={hx} cy={hy} r={3} fill="#111" />
-                    <rect x={Math.min(chart.w - 180, Math.max(12, hx + 8))} y={chart.pad + 8} width={168} height={40} rx={6} fill="#ffffff" stroke="#e5e7eb" />
-                    <text x={Math.min(chart.w - 172, Math.max(16, hx + 12))} y={chart.pad + 26} fontSize="12" fill="#111">{hdate}</text>
-                    <text x={Math.min(chart.w - 172, Math.max(16, hx + 12))} y={chart.pad + 42} fontSize="12" fill="#111">€{(hval ?? 0).toLocaleString()}</text>
-                </>
-            ) : null}
-        </svg>
-    );
 }

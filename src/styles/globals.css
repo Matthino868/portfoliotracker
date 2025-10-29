@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply font-sans bg-gray-50 text-gray-900 m-0;
+  }
+}
+
+/* Layout helpers */
+.container { @apply max-w-[1400px] mx-auto px-6 py-8 flex flex-col gap-6; }
+.container .row { @apply flex items-center gap-3; }
+.row { @apply flex items-start gap-3; }
+
+/* Cards */
+.card { @apply border border-gray-200 rounded-xl p-5 bg-white shadow-sm transition-shadow duration-200; }
+.card:hover { @apply shadow-md; }
+/* .card .row { @apply flex items-start gap-3; } */
+
+/* Buttons */
+.btn { @apply inline-flex items-center px-3.5 py-2.5 rounded-md font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 active:scale-[0.99]; }
+.btn.secondary { @apply bg-gray-100 text-gray-900 border border-gray-300 hover:bg-gray-200; }
+
+/* Inputs & Forms */
+input, select { @apply px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-colors duration-200; }
+input:focus, select:focus { @apply outline-none ring-2 ring-blue-500/20 border-blue-500; }
+form.column { @apply flex flex-row gap-3; }
+
+/* Tables */
+table.pretty { @apply w-full border-separate border-spacing-0 rounded-xl overflow-hidden bg-white shadow-sm; }
+table.pretty thead th { @apply bg-gray-100 text-xs uppercase tracking-wider font-semibold text-gray-600; }
+table.pretty th, table.pretty td { @apply py-3.5 px-3 text-right border-b border-gray-200; }
+table.pretty th:first-child, table.pretty td:first-child { @apply text-left; }
+table.pretty tbody tr:hover { @apply bg-gray-50; }
+
+/* Card rows (Portfolio items) */
+.cards { @apply flex flex-col gap-3.5; }
+.card-row { @apply flex items-center justify-between py-5 px-4 border border-gray-200 rounded-xl bg-white }
+.card-row .left { @apply flex flex-col gap-1 min-w-[180px]; }
+.card-row .sym { @apply font-semibold text-base; }
+.sub { @apply text-gray-500 text-sm; }
+.card-row .right { @apply flex items-baseline gap-6 flex-wrap; }
+.cell { @apply min-w-[120px] text-right; }
+.label { @apply text-xs text-gray-400; }
+.value { @apply text-base font-semibold text-gray-900; }
+
+/* Badges */
+.badge { @apply text-sm rounded-full px-2.5 py-1 font-semibold; }
+.badge.pos { @apply bg-emerald-50 text-emerald-700; }
+.badge.neg { @apply bg-rose-50 text-rose-700; }
+
+/* Icons */
+.coin-icon { @apply text-[20px] mr-1.5 align-middle; }
+
+@media (max-width: 640px) {
+  .card-row .cell { min-width: auto; }
+  .container { @apply px-4; }
+}
+

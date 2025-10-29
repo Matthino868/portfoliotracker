@@ -5,6 +5,7 @@ Overview
 - Store transactions in SQLite via Prisma
 - Compute average buy-in, realized and unrealized PnL (FIFO)
 - Simple dashboard with holdings and summary
+- Styling via Tailwind CSS v4
 
 
 
@@ -14,11 +15,18 @@ Setup
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create a Google OAuth Client (Web), set Authorized redirect URI to `http://localhost:3000/api/auth/callback/google`.
 2) Install dependencies:
    - npm install
+   - If upgrading from an older clone, ensure Tailwind deps are present:
+     - npm i -D tailwindcss @tailwindcss/postcss
 3) Generate Prisma client and create DB:
    - npx prisma generate
    - npx prisma migrate dev --name init
 4) Run dev server:
    - npm run dev
+
+Styling (Tailwind)
+- Tailwind v4 is configured via PostCSS plugin in `postcss.config.mjs`.
+- Global styles live in `src/styles/globals.css` using `@import "tailwindcss"` and `@apply` for app classes like `.btn`, `.card`, `.row`, etc.
+- No `tailwind.config.js` is required for the default setup.
 
 Notes
 - Price data currently uses an in-memory mock (`src/lib/prices.ts`). Replace with a real provider (e.g., CoinGecko) and cache results server-side.
